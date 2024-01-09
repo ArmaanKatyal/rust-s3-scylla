@@ -4,7 +4,7 @@ mod data;
 mod ingest;
 
 use crate::ingest::ingest_handler;
-use crate::{aws::s3::s3_service, config::Config};
+use crate::{aws::s3::S3Service, config::Config};
 
 use axum::{
     routing::{get, post},
@@ -14,7 +14,7 @@ use log::info;
 use tokio::net::TcpListener;
 
 #[derive(Clone)]
-struct AppState(s3_service);
+struct AppState(S3Service);
 
 #[tokio::main]
 async fn main() {

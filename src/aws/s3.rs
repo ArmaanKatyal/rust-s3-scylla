@@ -4,11 +4,13 @@ use aws_sdk_s3::Client;
 use crate::data::source_model::File;
 
 #[derive(Clone)]
-pub struct s3_service {
+#[allow(dead_code)]
+pub struct S3Service {
     pub client: Client,
 }
 
-impl s3_service {
+#[allow(dead_code)]
+impl S3Service {
     pub async fn init() -> Self {
         let region_provider =
             RegionProviderChain::default_provider().or_else(Region::new("us-west-2"));

@@ -14,7 +14,6 @@ impl Config {
         dotenv::dotenv().ok();
         let mut c = config::Config::new();
         c.merge(config::Environment::new())?;
-        let config = c.try_into();
-        config
+        c.try_into()
     }
 }
