@@ -14,6 +14,7 @@ impl Config {
         dotenv::dotenv().ok();
         let mut c = config::Config::new();
         c.merge(config::Environment::new())?;
+        c.merge(config::File::new("config.json", config::FileFormat::Json))?;
         c.try_into()
     }
 }
