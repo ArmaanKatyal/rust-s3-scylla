@@ -1,11 +1,20 @@
 mod aws;
 mod config;
 mod data;
+mod ingest;
 
-use crate::config::Config;
-use axum::{routing::get, Router};
+use crate::ingest::ingest_handler;
+use crate::{aws::s3::s3_service, config::Config};
+
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use log::info;
 use tokio::net::TcpListener;
+
+#[derive(Clone)]
+struct AppState(s3_service);
 
 #[tokio::main]
 async fn main() {
@@ -16,7 +25,9 @@ async fn main() {
     };
 
     info!("Starting server on {}:{}", config.host, config.port);
-    let app = Router::new().route("/health", get(health));
+    let app = Router::new()
+        .route("/health", get(health))
+        .route("/ingest", post(ingest_handler));
     let listner = TcpListener::bind(format!("{}:{}", config.host, config.port))
         .await
         .unwrap();
