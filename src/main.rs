@@ -14,7 +14,9 @@ use log::info;
 use tokio::net::TcpListener;
 
 #[derive(Clone)]
-struct AppState(S3Service);
+struct AppState {
+    s3: S3Service,
+}
 
 #[tokio::main]
 async fn main() {
@@ -25,9 +27,12 @@ async fn main() {
     };
 
     info!("Starting server on {}:{}", config.host, config.port);
-    let app = Router::new()
-        .route("/health", get(health))
-        .route("/ingest", post(ingest_handler));
+    let app = Router::new().route("/health", get(health)).route(
+        "/ingest",
+        post(ingest_handler).with_state(AppState {
+            s3: S3Service::init().await,
+        }),
+    );
     let listner = TcpListener::bind(format!("{}:{}", config.host, config.port))
         .await
         .unwrap();

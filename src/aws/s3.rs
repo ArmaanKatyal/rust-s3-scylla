@@ -1,15 +1,14 @@
 use aws_config::{meta::region::RegionProviderChain, BehaviorVersion, Region};
 use aws_sdk_s3::Client;
+use log::info;
 
-use crate::data::source_model::File;
+use crate::data::source_model::Logs;
 
 #[derive(Clone)]
-#[allow(dead_code)]
 pub struct S3Service {
     pub client: Client,
 }
 
-#[allow(dead_code)]
 impl S3Service {
     pub async fn init() -> Self {
         let region_provider =
@@ -19,10 +18,11 @@ impl S3Service {
             .load()
             .await;
         let client = Client::new(&config);
+        info!("initialized s3 client; region: us-west-2");
         Self { client }
     }
 
-    pub async fn read_file(&self, bucket: String, key: String) -> Result<File, anyhow::Error> {
+    pub async fn read_file(&self, bucket: String, key: String) -> Result<Logs, anyhow::Error> {
         let mut object = self
             .client
             .get_object()
@@ -34,7 +34,7 @@ impl S3Service {
         while let Some(chunk) = object.body.try_next().await? {
             bytes.extend_from_slice(&chunk);
         }
-        let file: File = serde_json::from_slice(&bytes)?;
-        Ok(file)
+        let data: Logs = serde_json::from_slice(&bytes)?;
+        Ok(data)
     }
 }

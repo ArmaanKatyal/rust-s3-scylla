@@ -1,10 +1,14 @@
 use axum::{
     debug_handler,
+    extract::State,
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
+use log::info;
 use serde_json::json;
+
+use crate::AppState;
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -24,6 +28,13 @@ impl IntoResponse for AppError {
     }
 }
 
+#[derive(Debug, serde::Deserialize)]
+pub struct IngestRequest {
+    pub ingestion_id: String,
+    pub bucket: String,
+    pub files: Vec<String>,
+}
+
 #[derive(serde::Serialize)]
 pub struct IngestResponse {
     status: String,
@@ -37,7 +48,16 @@ impl IngestResponse {
 }
 
 #[debug_handler]
-pub async fn ingest_handler() -> Result<Json<IngestResponse>, AppError> {
+pub async fn ingest_handler(
+    State(s): State<AppState>,
+    Json(payload): Json<IngestRequest>,
+) -> Result<Json<IngestResponse>, AppError> {
+    let logs =
+        s.s3.read_file(payload.bucket, payload.files[0].clone())
+            .await
+            .unwrap();
+    info!("logs: {:?}", logs);
+
     Ok(Json(IngestResponse::new(
         "OK".to_string(),
         "Ingested".to_string(),

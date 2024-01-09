@@ -1,0 +1,17 @@
+CREATE KEYSPACE IF NOT EXISTS datalake WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+CREATE TABLE IF NOT EXISTS datalake.logs (
+    id uuid,
+    ingestion_id text,
+    timestamp timestamp,
+    user_id int,
+    event_type text,
+    page_url text,
+    ip_address text,
+    device_type text,
+    browser text,
+    os text,
+    response_time int,
+    PRIMARY KEY (id, ingestion_id, timestamp)
+) WITH comment = 'logs Table' AND caching = {'enabled': 'true'}
+    AND compression = {'sstable_compression': 'LZ4Compressor'}
+    AND CLUSTERING ORDER BY (timestamp DESC);
