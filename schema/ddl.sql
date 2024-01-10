@@ -14,4 +14,4 @@ CREATE TABLE IF NOT EXISTS datalake.logs (
     PRIMARY KEY (id, ingestion_id, timestamp)
 ) WITH comment = 'logs Table' AND caching = {'enabled': 'true'}
     AND compression = {'sstable_compression': 'LZ4Compressor'}
-    AND CLUSTERING ORDER BY (timestamp DESC);
+    AND CLUSTERING ORDER BY (ingestion_id ASC, timestamp DESC);

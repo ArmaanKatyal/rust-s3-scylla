@@ -6,6 +6,7 @@ pub struct Config {
     pub db_url: String,
     pub db_dc: String,
     pub parallel_files: usize,
+    pub db_parallelism: usize,
     pub schema_file: String,
 }
 
