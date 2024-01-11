@@ -1,5 +1,5 @@
 run: build
-	RUST_LOG="info,warn,error" ./target/debug/rust-s3-scylla
+	RUST_LOG="info" ./target/debug/rust-s3-scylla
 
 build:
 	cargo build

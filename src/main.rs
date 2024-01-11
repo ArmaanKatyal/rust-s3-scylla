@@ -4,6 +4,9 @@ mod data;
 mod db;
 mod ingest;
 
+use std::sync::Arc;
+
+use crate::db::scylladb::ScyllaDbService;
 use crate::ingest::ingest_handler;
 use crate::{aws::s3::S3Service, config::Config};
 
@@ -11,13 +14,14 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use db::scylladb::ScyllaDbService;
 use log::info;
 use tokio::net::TcpListener;
+use tokio::sync::Semaphore;
 
 #[derive(Clone)]
 #[allow(dead_code)]
 struct AppState {
+    semaphore: Arc<Semaphore>,
     s3: S3Service,
     db_svc: ScyllaDbService,
 }
@@ -34,6 +38,7 @@ async fn main() {
     let app = Router::new().route("/health", get(health)).route(
         "/ingest",
         post(ingest_handler).with_state(AppState {
+            semaphore: Arc::new(Semaphore::new(config.parallel_files)),
             s3: S3Service::init().await,
             db_svc: ScyllaDbService::new(
                 config.db_dc,
