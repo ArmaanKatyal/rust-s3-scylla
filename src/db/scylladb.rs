@@ -1,10 +1,16 @@
-use std::{fs, sync::Arc};
+use std::{fs, sync::Arc, time::Instant};
 
-use log::info;
+use log::{debug, error, info};
 use scylla::{
     load_balancing::DefaultPolicy, prepared_statement::PreparedStatement, transport::Compression,
     ExecutionProfile, Session, SessionBuilder,
 };
+use tokio::{
+    sync::Semaphore,
+    task::{self, JoinHandle},
+};
+
+use crate::data::source_model::Logs;
 
 #[derive(Clone)]
 #[allow(dead_code)]
@@ -16,6 +22,7 @@ pub struct ScyllaDbService {
 
 const INSERT_QUERY: &str = "INSERT INTO datalake.logs (id, ingestion_id, timestamp, user_id, event_type, page_url, ip_address, device_type, browser, os, response_time) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 
+#[allow(dead_code)]
 impl ScyllaDbService {
     pub async fn new(dc: String, host: String, db_parallelism: usize, schema_file: String) -> Self {
         info!("ScyllaDbService: connecting to {}. DC: {}.", host, dc);
@@ -60,5 +67,45 @@ impl ScyllaDbService {
             db_session: Arc::new(session),
             ps: Arc::new(ps),
         }
+    }
+
+    pub async fn insert(&self, entries: Logs) -> Result<(), anyhow::Error> {
+        let now = Instant::now();
+        let sem = Arc::new(Semaphore::new(self.parallelism));
+        info!("SycllaDbService: insert: saving logs...");
+        let mut i = 0;
+        let mut handlers: Vec<JoinHandle<_>> = Vec::new();
+        for _entry in entries {
+            let session = self.db_session.clone();
+            let prepared = self.ps.clone();
+            let permit = sem.clone().acquire_owned().await;
+            debug!("insert: creating tasks");
+            handlers.push(task::spawn(async move {
+                // TODO: insert the data
+                let result = session.execute(&prepared, ()).await;
+                let _permit = permit;
+                result
+            }));
+            debug!("insert: tasks created");
+            i += 1;
+        }
+        info!("SycllaDbService: insert: Waiting for {i} tasks to complete");
+
+        let mut error_count = 0;
+        for thread in handlers {
+            match thread.await {
+                Err(e) => {
+                    error_count += 1;
+                    error!("insert: Error executing Query. {:?}", e)
+                }
+                Ok(r) => debug!("insert: Query Result: {:?}", r),
+            }
+        }
+        let elapsed = now.elapsed();
+        info!(
+            "ScyllaDbService: insert: {} insert log tasks completed. Errors: {}. Took: {:.2?}",
+            i, error_count, elapsed
+        );
+        Ok(())
     }
 }

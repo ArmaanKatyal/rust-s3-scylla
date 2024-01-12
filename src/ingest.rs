@@ -91,14 +91,21 @@ pub async fn ingest_handler(
 }
 
 async fn process_file(
-    _ingestion_id: String,
+    ingestion_id: String,
     state: AppState,
     bucket: String,
     file: String,
     permit: Result<OwnedSemaphorePermit, AcquireError>,
 ) -> Result<(), anyhow::Error> {
-    let logs = state.s3.read_file(bucket, file).await.unwrap();
-    debug!("logs: {:?}", logs);
+    info!("Processing file {file} for provider {ingestion_id}. Reading file...");
+    let now = Instant::now();
+    let logs = state.s3.read_file(bucket, file.clone()).await.unwrap();
+    // TODO: Transform/process logs and add more data
+    info!("Logs processed, logs size: {}. Persisting...", logs.len());
+    state.db_svc.insert(logs).await?;
+    info!("logs persisted!");
+    let elapsed = now.elapsed();
+    info!("File {} processed in {:.2?}", file, elapsed);
     let _permit = permit;
     Ok(())
 }
