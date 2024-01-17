@@ -19,7 +19,6 @@ use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
 
 #[derive(Clone)]
-#[allow(dead_code)]
 struct AppState {
     semaphore: Arc<Semaphore>,
     s3: S3Service,

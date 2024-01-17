@@ -1,8 +1,8 @@
 CREATE KEYSPACE IF NOT EXISTS datalake WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 CREATE TABLE IF NOT EXISTS datalake.logs (
-    id uuid,
+    id text,
     ingestion_id text,
-    timestamp timestamp,
+    timestamp text,
     user_id int,
     event_type text,
     page_url text,
