@@ -103,16 +103,19 @@ async fn process_file(
 ) -> Result<(), anyhow::Error> {
     info!("Processing file {file} for provider {ingestion_id}. Reading file...");
     let now = Instant::now();
-    let logs = state
-        .ingestor
-        .read_file(bucket, file.clone())
-        .await
-        .unwrap();
+    let logs = match state.ingestor.read_file(bucket, file.clone()).await {
+        Ok(logs) => logs,
+        Err(e) => return Err(anyhow::Error::msg(format!("Failed to read file: {}", e))),
+    };
     info!("Logs processed, logs size: {}. Persisting...", logs.len());
-    state
+    match state
         .db_svc
         .insert(transform_logs(ingestion_id, logs))
-        .await?;
+        .await
+    {
+        Ok(_) => debug!("Insert transformed logs"),
+        Err(e) => return Err(anyhow::Error::msg(format!("Failed to insert logs: {}", e))),
+    };
     info!("logs persisted!");
     let elapsed = now.elapsed();
     info!("File {} processed in {:.2?}", file, elapsed);

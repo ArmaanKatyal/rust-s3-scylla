@@ -4,7 +4,7 @@ mod db;
 mod ingest;
 mod service;
 
-use std::sync::Arc;
+use std::{process::exit, sync::Arc};
 
 use crate::config::Config;
 use crate::db::scylladb::ScyllaDbService;
@@ -14,7 +14,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use log::info;
+use log::{debug, error, info};
 use service::{local::LocalService, s3::S3Service, Ingestor};
 use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
@@ -55,10 +55,20 @@ async fn main() {
             .await,
         }),
     );
-    let listner = TcpListener::bind(format!("{}:{}", config.host, config.port))
-        .await
-        .unwrap();
-    axum::serve(listner, app).await.unwrap();
+    let listner = match TcpListener::bind(format!("{}:{}", config.host, config.port)).await {
+        Ok(l) => l,
+        Err(e) => {
+            error!("Failed to bind listner on port {:?} {:?}", config.port, e);
+            exit(1)
+        }
+    };
+    match axum::serve(listner, app).await {
+        Ok(_) => debug!("Server started on port: {:?}", config.port),
+        Err(e) => {
+            error!("Server failed to start: {:?}", e);
+            exit(1)
+        }
+    };
 }
 
 async fn health() -> &'static str {

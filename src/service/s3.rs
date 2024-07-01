@@ -7,6 +7,8 @@ use crate::data::source_model::Logs;
 
 use super::Ingestor;
 
+const DEFAULT_REGION: &str = "us-west-2";
+
 #[derive(Clone)]
 pub struct S3Service {
     pub client: Client,
@@ -15,7 +17,7 @@ pub struct S3Service {
 impl S3Service {
     pub async fn init() -> Self {
         let region_provider =
-            RegionProviderChain::default_provider().or_else(Region::new("us-west-2"));
+            RegionProviderChain::default_provider().or_else(Region::new(DEFAULT_REGION));
         let config = aws_config::defaults(BehaviorVersion::latest())
             .region(region_provider)
             .load()
@@ -29,18 +31,33 @@ impl S3Service {
 #[async_trait]
 impl Ingestor for S3Service {
     async fn read_file(&self, bucket: String, key: String) -> Result<Logs, anyhow::Error> {
-        let mut object = self
+        let mut object = match self
             .client
             .get_object()
             .bucket(bucket)
             .key(key)
             .send()
-            .await?;
+            .await
+        {
+            Ok(res) => res,
+            Err(e) => return Err(anyhow::Error::msg(format!("Failed to get object: {}", e))),
+        };
         let mut bytes = Vec::new();
-        while let Some(chunk) = object.body.try_next().await? {
-            bytes.extend_from_slice(&chunk);
+        while let Some(chunk) = match object.body.try_next().await {
+            Ok(chunk) => chunk,
+            Err(e) => {
+                return Err(anyhow::Error::msg(format!(
+                    "Failed to consume ByteStream: {}",
+                    e
+                )))
+            }
+        } {
+            bytes.extend_from_slice(&chunk)
         }
-        let data: Logs = serde_json::from_slice(&bytes)?;
+        let data: Logs = match serde_json::from_slice(&bytes) {
+            Ok(data) => data,
+            Err(e) => return Err(anyhow::Error::msg(format!("Failed to parse logs: {}", e))),
+        };
         Ok(data)
     }
 }
