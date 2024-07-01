@@ -1,8 +1,11 @@
 use aws_config::{meta::region::RegionProviderChain, BehaviorVersion, Region};
 use aws_sdk_s3::Client;
+use axum::async_trait;
 use log::info;
 
 use crate::data::source_model::Logs;
+
+use super::Ingestor;
 
 #[derive(Clone)]
 pub struct S3Service {
@@ -21,8 +24,11 @@ impl S3Service {
         info!("initialized s3 client; region: us-west-2");
         Self { client }
     }
+}
 
-    pub async fn read_file(&self, bucket: String, key: String) -> Result<Logs, anyhow::Error> {
+#[async_trait]
+impl Ingestor for S3Service {
+    async fn read_file(&self, bucket: String, key: String) -> Result<Logs, anyhow::Error> {
         let mut object = self
             .client
             .get_object()

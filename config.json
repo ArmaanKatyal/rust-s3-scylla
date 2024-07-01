@@ -5,5 +5,6 @@
     "RUST_LOG": "info",
     "parallel_files": 2,
     "db_parallelism": 10,
-    "schema_file": "schema/ddl.sql"
+    "schema_file": "schema/ddl.sql",
+    "use_s3": false
 }

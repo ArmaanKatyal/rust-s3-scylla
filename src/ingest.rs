@@ -103,7 +103,11 @@ async fn process_file(
 ) -> Result<(), anyhow::Error> {
     info!("Processing file {file} for provider {ingestion_id}. Reading file...");
     let now = Instant::now();
-    let logs = state.s3.read_file(bucket, file.clone()).await.unwrap();
+    let logs = state
+        .ingestor
+        .read_file(bucket, file.clone())
+        .await
+        .unwrap();
     info!("Logs processed, logs size: {}. Persisting...", logs.len());
     state
         .db_svc

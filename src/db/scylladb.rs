@@ -79,9 +79,14 @@ impl ScyllaDbService {
             let permit = sem.clone().acquire_owned().await;
             debug!("insert: creating tasks");
             handlers.push(task::spawn(async move {
-                let result = session.execute(&prepared, entry).await;
+                let result = match session.execute(&prepared, entry).await {
+                    Ok(result) => result,
+                    Err(e) => {
+                        return Err(anyhow::Error::msg(format!("Query execution failed: {}", e)))
+                    }
+                };
                 let _permit = permit;
-                result
+                Ok(result)
             }));
             debug!("insert: tasks created");
             i += 1;
@@ -95,7 +100,10 @@ impl ScyllaDbService {
                     error_count += 1;
                     error!("insert: Error executing Query. {:?}", e)
                 }
-                Ok(r) => debug!("insert: Query Result: {:?}", r),
+                Ok(r) => match r {
+                    Ok(r) => debug!("insert: Query Result: {:?}", r),
+                    Err(e) => error!("Thread error: {:?}", e),
+                },
             }
         }
         let elapsed = now.elapsed();

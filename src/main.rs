@@ -1,27 +1,28 @@
-mod aws;
 mod config;
 mod data;
 mod db;
 mod ingest;
+mod service;
 
 use std::sync::Arc;
 
+use crate::config::Config;
 use crate::db::scylladb::ScyllaDbService;
 use crate::ingest::ingest_handler;
-use crate::{aws::s3::S3Service, config::Config};
 
 use axum::{
     routing::{get, post},
     Router,
 };
 use log::info;
+use service::{local::LocalService, s3::S3Service, Ingestor};
 use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
 
 #[derive(Clone)]
 struct AppState {
     semaphore: Arc<Semaphore>,
-    s3: S3Service,
+    ingestor: Arc<dyn Ingestor>,
     db_svc: ScyllaDbService,
 }
 
@@ -32,13 +33,19 @@ async fn main() {
         Ok(config) => config,
         Err(e) => panic!("Error loading config: {}", e),
     };
-
+    let ingestor: Arc<dyn Ingestor> = if config.use_s3 {
+        info!("Using S3 ingestor");
+        Arc::new(S3Service::init().await)
+    } else {
+        info!("Using local ingestor");
+        Arc::new(LocalService::init())
+    };
     info!("Starting server on {}:{}", config.host, config.port);
     let app = Router::new().route("/health", get(health)).route(
         "/ingest",
         post(ingest_handler).with_state(AppState {
             semaphore: Arc::new(Semaphore::new(config.parallel_files)),
-            s3: S3Service::init().await,
+            ingestor,
             db_svc: ScyllaDbService::new(
                 config.db_dc,
                 config.db_url,

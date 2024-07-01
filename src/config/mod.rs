@@ -8,6 +8,7 @@ pub struct Config {
     pub parallel_files: usize,
     pub db_parallelism: usize,
     pub schema_file: String,
+    pub use_s3: bool,
 }
 
 impl Config {
