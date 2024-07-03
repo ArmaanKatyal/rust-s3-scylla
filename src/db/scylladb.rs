@@ -38,12 +38,12 @@ impl ScyllaDbService {
         info!("ScyllaDbService: connected to {}. DC: {}.", host, dc);
 
         debug!("ScyllaDbService: creating schema...");
-        let schema = fs::read_to_string(&schema_file)
-            .expect(("Error Reading Schema file".to_owned() + schema_file).as_str());
+        let schema = fs::read_to_string(schema_file)
+            .unwrap_or_else(|_| { panic!("{}", ("Error Reading Schema file".to_owned() + schema_file)) });
 
-        let schema_query = schema.trim().replace("\n", "");
+        let schema_query = schema.trim().replace('\n', "");
 
-        for q in schema_query.split(";") {
+        for q in schema_query.split(';') {
             let query = q.to_owned() + ";";
             if query.len() > 1 {
                 info!("Running Query: {}", query);
