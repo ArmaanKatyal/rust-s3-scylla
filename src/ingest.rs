@@ -64,13 +64,13 @@ pub async fn ingest_handler(
 
     for file in payload.files.iter() {
         let permit = s.semaphore.clone().acquire_owned().await;
-        handlers.push(task::spawn(process_file(
-            payload.ingestion_id.clone(),
-            s.clone(),
-            payload.bucket.to_string(),
-            file.to_string(),
-            permit,
-        )));
+        let ingestion_id = payload.ingestion_id.clone();
+        let bucket = payload.bucket.clone();
+        let file = file.clone();
+        let state = s.clone();
+        handlers.push(task::spawn(async move {
+            process_file(ingestion_id, state, bucket, file, permit).await
+        }));
     }
 
     debug!("Waiting for files to be processed");
@@ -103,14 +103,18 @@ async fn process_file(
 ) -> Result<(), anyhow::Error> {
     info!("Processing file {file} for provider {ingestion_id}. Reading file...");
     let now = Instant::now();
-    let logs = match state.ingestor.read_file(bucket, file.clone()).await {
+    let logs = match state
+        .ingestor
+        .read_file(bucket.as_str(), file.as_str())
+        .await
+    {
         Ok(logs) => logs,
         Err(e) => return Err(anyhow::Error::msg(format!("Failed to read file: {}", e))),
     };
     info!("Logs processed, logs size: {}. Persisting...", logs.len());
     match state
         .db_svc
-        .insert(transform_logs(ingestion_id, logs))
+        .insert(transform_logs(ingestion_id.as_str(), logs))
         .await
     {
         Ok(_) => debug!("Insert transformed logs"),
@@ -123,12 +127,12 @@ async fn process_file(
     Ok(())
 }
 
-fn transform_logs(ingest_id: String, logs: Logs) -> LogEntries {
+fn transform_logs(ingest_id: &str, logs: Logs) -> LogEntries {
     let mut entries = Vec::new();
     for log in logs {
         let entry = LogEntry {
             id: Uuid::new_v4().to_string(),
-            ingestion_id: ingest_id.clone(),
+            ingestion_id: ingest_id.to_string(),
             timestamp: log.timestamp.unwrap_or("".to_string()),
             user_id: log.user_id.unwrap_or(0),
             event_type: log.event_type.unwrap_or("".to_string()),

@@ -7,5 +7,5 @@ pub mod s3;
 
 #[async_trait]
 pub trait Ingestor: Send + Sync {
-    async fn read_file(&self, bucket: String, key: String) -> Result<Logs, anyhow::Error>;
+    async fn read_file(&self, bucket: &str, key: &str) -> Result<Logs, anyhow::Error>;
 }

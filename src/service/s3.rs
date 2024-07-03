@@ -30,7 +30,7 @@ impl S3Service {
 
 #[async_trait]
 impl Ingestor for S3Service {
-    async fn read_file(&self, bucket: String, key: String) -> Result<Logs, anyhow::Error> {
+    async fn read_file(&self, bucket: &str, key: &str) -> Result<Logs, anyhow::Error> {
         let mut object = match self
             .client
             .get_object()

@@ -14,7 +14,7 @@ impl LocalService {
 
 #[async_trait]
 impl Ingestor for LocalService {
-    async fn read_file(&self, bucket: String, key: String) -> Result<Logs, anyhow::Error> {
+    async fn read_file(&self, bucket: &str, key: &str) -> Result<Logs, anyhow::Error> {
         // bucket is mapped to a local folder and key is the file name
         let contents = match std::fs::read_to_string(format!("./{}/{}", bucket, key)) {
             Ok(contents) => contents,
