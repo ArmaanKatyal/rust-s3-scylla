@@ -35,7 +35,7 @@ async fn main() {
     };
     let ingestor: Arc<dyn Ingestor> = if config.use_s3 {
         info!("Using S3 ingestor");
-        Arc::new(S3Service::init().await)
+        Arc::new(S3Service::init(config.region).await)
     } else {
         info!("Using local ingestor");
         Arc::new(LocalService::init())

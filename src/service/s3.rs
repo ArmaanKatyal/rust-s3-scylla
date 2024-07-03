@@ -15,9 +15,10 @@ pub struct S3Service {
 }
 
 impl S3Service {
-    pub async fn init() -> Self {
-        let region_provider =
-            RegionProviderChain::default_provider().or_else(Region::new(DEFAULT_REGION));
+    pub async fn init(region: String) -> Self {
+        let region_provider = RegionProviderChain::first_try(Region::new(region))
+            .or_else(DEFAULT_REGION)
+            .or_default_provider();
         let config = aws_config::defaults(BehaviorVersion::latest())
             .region(region_provider)
             .load()
