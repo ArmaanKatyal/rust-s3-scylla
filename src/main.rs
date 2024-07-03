@@ -1,4 +1,4 @@
-mod config;
+mod app_config;
 mod data;
 mod db;
 mod ingest;
@@ -6,7 +6,7 @@ mod service;
 
 use std::{process::exit, sync::Arc};
 
-use crate::config::Config;
+use crate::app_config::AppConfig;
 use crate::db::scylladb::ScyllaDbService;
 use crate::ingest::ingest_handler;
 
@@ -29,10 +29,10 @@ struct AppState {
 #[tokio::main]
 async fn main() {
     env_logger::init();
-    let config = match Config::from_env() {
-        Ok(config) => config,
-        Err(e) => panic!("Error loading config: {}", e),
-    };
+    let config = AppConfig::init()
+        .from_env()
+        .from_file("config.toml", config::FileFormat::Toml)
+        .parse();
     let ingestor: Arc<dyn Ingestor> = if config.use_s3 {
         info!("Using S3 ingestor");
         Arc::new(S3Service::init(config.region).await)
