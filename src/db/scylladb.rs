@@ -1,4 +1,4 @@
-use std::{fs, sync::Arc, time::Instant};
+use std::{fs, process::exit, sync::Arc, time::Instant};
 
 use log::{debug, error, info};
 use scylla::{
@@ -22,14 +22,14 @@ pub struct ScyllaDbService {
 const INSERT_QUERY: &str = "INSERT INTO datalake.logs (id, ingestion_id, timestamp, user_id, event_type, page_url, ip_address, device_type, browser, os, response_time) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 
 impl ScyllaDbService {
-    pub async fn new(dc: String, host: String, db_parallelism: usize, schema_file: String) -> Self {
-        info!("ScyllaDbService: connecting to {}. DC: {}.", host, dc);
+    pub async fn new(dc: &str, host: &str, db_parallelism: usize, schema_file: &str) -> Self {
+        debug!("ScyllaDbService: connecting to {}. DC: {}.", host, dc);
         let policy = Arc::new(DefaultPolicy::default());
         let profile = ExecutionProfile::builder()
             .load_balancing_policy(policy)
             .build();
         let session: Session = SessionBuilder::new()
-            .known_node(host.clone())
+            .known_node(host)
             .compression(Some(Compression::Lz4))
             .default_execution_profile_handle(profile.into_handle())
             .build()
@@ -37,9 +37,9 @@ impl ScyllaDbService {
             .expect("Error connecting to ScyllaDB");
         info!("ScyllaDbService: connected to {}. DC: {}.", host, dc);
 
-        info!("ScyllaDbService: creating schema...");
+        debug!("ScyllaDbService: creating schema...");
         let schema = fs::read_to_string(&schema_file)
-            .expect(("Error Reading Schema file".to_owned() + schema_file.as_str()).as_str());
+            .expect(("Error Reading Schema file".to_owned() + schema_file).as_str());
 
         let schema_query = schema.trim().replace("\n", "");
 
@@ -47,17 +47,24 @@ impl ScyllaDbService {
             let query = q.to_owned() + ";";
             if query.len() > 1 {
                 info!("Running Query: {}", query);
-                session
+                if let Err(e) = session
                     .query(query, &[])
-                    .await
-                    .expect("Error creating schema!");
+                    .await {
+                        error!("Query Failed: {:?} {:?}", q, e);
+                        exit(1)
+                    }
             }
         }
 
-        let mut ps = session
+        let mut ps = match session
             .prepare(INSERT_QUERY)
-            .await
-            .expect("Error preparing query!");
+            .await {
+                Ok(ps) => ps,
+                Err(e) => {
+                    error!("Prepared Statement failed: {:?}", e);
+                    exit(1)
+                }
+            };
         ps.set_consistency(scylla::statement::Consistency::Any);
 
         Self {
@@ -70,7 +77,7 @@ impl ScyllaDbService {
     pub async fn insert(&self, entries: LogEntries) -> Result<(), anyhow::Error> {
         let now = Instant::now();
         let sem = Arc::new(Semaphore::new(self.parallelism));
-        info!("SycllaDbService: insert: saving logs...");
+        debug!("SycllaDbService: insert: saving logs...");
         let mut i = 0;
         let mut handlers: Vec<JoinHandle<_>> = Vec::new();
         for entry in entries {
@@ -91,7 +98,7 @@ impl ScyllaDbService {
             debug!("insert: tasks created");
             i += 1;
         }
-        info!("SycllaDbService: insert: Waiting for {i} tasks to complete");
+        debug!("SycllaDbService: insert: Waiting for {i} tasks to complete");
 
         let mut error_count = 0;
         for thread in handlers {
@@ -106,10 +113,9 @@ impl ScyllaDbService {
                 },
             }
         }
-        let elapsed = now.elapsed();
         info!(
             "ScyllaDbService: insert: {} insert log tasks completed. Errors: {}. Took: {:.2?}",
-            i, error_count, elapsed
+            i, error_count, now.elapsed()
         );
         Ok(())
     }

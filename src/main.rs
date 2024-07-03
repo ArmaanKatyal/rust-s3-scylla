@@ -47,10 +47,10 @@ async fn main() {
             semaphore: Arc::new(Semaphore::new(config.parallel_files)),
             ingestor,
             db_svc: ScyllaDbService::new(
-                config.db_dc,
-                config.db_url,
+                config.db_dc.as_str(),
+                config.db_url.as_str(),
                 config.db_parallelism,
-                config.schema_file,
+                config.schema_file.as_str(),
             )
             .await,
         }),
