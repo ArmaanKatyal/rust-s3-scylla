@@ -23,14 +23,14 @@ impl AppConfig {
             conf: Config::new(),
         }
     }
-    pub fn from_env(mut self) -> Self {
+    pub fn load_from_env(mut self) -> Self {
         dotenv::dotenv().ok();
         if let Err(e) = self.conf.merge(Environment::new()) {
             panic!("Failed to load env: {:?}", e)
         }
         self
     }
-    pub fn from_file(mut self, filename: &str, file_format: FileFormat) -> Self {
+    pub fn load_from_file(mut self, filename: &str, file_format: FileFormat) -> Self {
         if let Err(e) = self.conf.merge(File::new(filename, file_format)) {
             panic!("Failed to load file {:?}: {:?}", filename, e);
         }
@@ -73,11 +73,11 @@ mod tests {
     }
 
     #[test]
-    fn test_from_env() {
+    fn test_load_from_env() {
         env::set_var("HOST", "localhost");
         env::set_var("PORT", "8080");
 
-        let app_config = AppConfig::init().from_env();
+        let app_config = AppConfig::init().load_from_env();
 
         assert_eq!(app_config.conf.get_str("host").unwrap(), "localhost");
         assert_eq!(app_config.conf.get_str("port").unwrap(), "8080");
@@ -87,12 +87,12 @@ mod tests {
     }
 
     #[test]
-    fn test_from_file() {
+    fn test_load_from_file() {
         let temp_file = NamedTempFile::new().unwrap();
         let _ = write(temp_file.path(), TEST_CONFIG);
 
         let app_config =
-            AppConfig::init().from_file(temp_file.path().to_str().unwrap(), FileFormat::Toml);
+            AppConfig::init().load_from_file(temp_file.path().to_str().unwrap(), FileFormat::Toml);
 
         assert_eq!(app_config.conf.get_str("host").unwrap(), "example.com");
         assert_eq!(app_config.conf.get_int("port").unwrap(), 9090);
@@ -105,7 +105,7 @@ mod tests {
         let _ = write(temp_file.path(), TEST_CONFIG);
 
         let conf = AppConfig::init()
-            .from_file(temp_file.path().to_str().unwrap(), FileFormat::Toml)
+            .load_from_file(temp_file.path().to_str().unwrap(), FileFormat::Toml)
             .parse();
 
         assert_eq!(conf.host, "example.com");
@@ -126,7 +126,7 @@ mod tests {
         let _ = write(temp_file.path(), config_content);
 
         AppConfig::init()
-            .from_file(temp_file.path().to_str().unwrap(), FileFormat::Toml)
+            .load_from_file(temp_file.path().to_str().unwrap(), FileFormat::Toml)
             .parse();
     }
 }

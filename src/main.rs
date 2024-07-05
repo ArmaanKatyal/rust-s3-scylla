@@ -30,8 +30,8 @@ struct AppState {
 async fn main() {
     env_logger::init();
     let config = AppConfig::init()
-        .from_env()
-        .from_file("config.toml", config::FileFormat::Toml)
+        .load_from_env()
+        .load_from_file("config.toml", config::FileFormat::Toml)
         .parse();
     let ingestor: Arc<dyn Ingestor> = if config.use_s3 {
         info!("Using S3 ingestor");
