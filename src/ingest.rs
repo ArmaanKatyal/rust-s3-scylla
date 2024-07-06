@@ -104,7 +104,7 @@ async fn process_file(
     info!("Processing file {file} for provider {ingestion_id}. Reading file...");
     let now = Instant::now();
     let logs = match state
-        .ingestor
+        .ingest
         .read_file(bucket.as_str(), file.as_str())
         .await
     {

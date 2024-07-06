@@ -77,7 +77,7 @@ impl ScyllaDbService {
     pub async fn insert(&self, entries: LogEntries) -> Result<(), anyhow::Error> {
         let now = Instant::now();
         let sem = Arc::new(Semaphore::new(self.parallelism));
-        debug!("SycllaDbService: insert: saving logs...");
+        debug!("ScyllaDbService: insert: saving logs...");
         let mut i = 0;
         let mut handlers: Vec<JoinHandle<_>> = Vec::new();
         for entry in entries {
@@ -98,7 +98,7 @@ impl ScyllaDbService {
             debug!("insert: tasks created");
             i += 1;
         }
-        debug!("SycllaDbService: insert: Waiting for {i} tasks to complete");
+        debug!("ScyllaDbService: insert: Waiting for {i} tasks to complete");
 
         let mut error_count = 0;
         for thread in handlers {

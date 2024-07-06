@@ -37,12 +37,9 @@ impl AppConfig {
         self
     }
     pub fn parse(self) -> Conf {
-        match self.conf.try_into() {
-            Ok(conf) => conf,
-            Err(e) => {
-                panic!("Failed to construct config: {:?}", e)
-            }
-        }
+        self.conf.try_into().unwrap_or_else(|e| {
+            panic!("Failed to construct config: {:?}", e)
+        })
     }
 }
 

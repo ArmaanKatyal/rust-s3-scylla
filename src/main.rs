@@ -22,7 +22,7 @@ use tokio::sync::Semaphore;
 #[derive(Clone)]
 struct AppState {
     semaphore: Arc<Semaphore>,
-    ingestor: Arc<dyn Ingestor>,
+    ingest: Arc<dyn Ingestor>,
     db_svc: ScyllaDbService,
 }
 
@@ -33,7 +33,7 @@ async fn main() {
         .load_from_env()
         .load_from_file("config.toml", config::FileFormat::Toml)
         .parse();
-    let ingestor: Arc<dyn Ingestor> = if config.use_s3 {
+    let ingest: Arc<dyn Ingestor> = if config.use_s3 {
         info!("Using S3 ingestor");
         Arc::new(S3Service::init(config.region).await)
     } else {
@@ -45,7 +45,7 @@ async fn main() {
         "/ingest",
         post(ingest_handler).with_state(AppState {
             semaphore: Arc::new(Semaphore::new(config.parallel_files)),
-            ingestor,
+            ingest,
             db_svc: ScyllaDbService::new(
                 config.db_dc.as_str(),
                 config.db_url.as_str(),
@@ -55,14 +55,14 @@ async fn main() {
             .await,
         }),
     );
-    let listner = match TcpListener::bind(format!("{}:{}", config.host, config.port)).await {
+    let listener = match TcpListener::bind(format!("{}:{}", config.host, config.port)).await {
         Ok(l) => l,
         Err(e) => {
             error!("Failed to bind listner on port {:?} {:?}", config.port, e);
             exit(1)
         }
     };
-    match axum::serve(listner, app).await {
+    match axum::serve(listener, app).await {
         Ok(_) => debug!("Server started on port: {:?}", config.port),
         Err(e) => {
             error!("Server failed to start: {:?}", e);
