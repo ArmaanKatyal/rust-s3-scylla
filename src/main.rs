@@ -35,7 +35,7 @@ async fn main() {
         .parse();
     let ingest: Arc<dyn Ingestor> = if config.use_s3 {
         info!("Using S3 ingestor");
-        Arc::new(S3Service::init(config.region).await)
+        Arc::new(S3Service::<service::s3::S3Client>::init(config.region).await)
     } else {
         info!("Using local ingestor");
         Arc::new(LocalService::init())

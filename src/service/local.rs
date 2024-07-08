@@ -45,7 +45,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_read_file_sucess() {
+    async fn test_local_read_file_sucess() {
         let temp_dir = TempDir::new().unwrap();
         let bucket = temp_dir.path().to_str().unwrap();
         let key = "testfile.json";
@@ -65,7 +65,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_read_file_json_err() {
+    async fn test_local_read_file_json_err() {
         let temp_dir = TempDir::new().unwrap();
         let bucket = temp_dir.path().to_str().unwrap();
         let key = "testfile.json";
@@ -83,7 +83,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_read_file_not_found() {
+    async fn test_local_read_file_not_found() {
         let local_service = LocalService::init();
         let temp_dir = TempDir::new().unwrap();
         let bucket = temp_dir.path().to_str().unwrap();
