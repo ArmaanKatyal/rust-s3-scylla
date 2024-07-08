@@ -15,7 +15,7 @@ use axum::{
     Router,
 };
 use log::{debug, error, info};
-use service::{local::LocalService, s3::S3Service, Ingestor};
+use service::Ingestor;
 use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
 
@@ -35,10 +35,10 @@ async fn main() {
         .parse();
     let ingest: Arc<dyn Ingestor> = if config.use_s3 {
         info!("Using S3 ingestor");
-        Arc::new(S3Service::<service::s3::S3Client>::init(config.region).await)
+        Arc::new(service::get_s3_service(config.region).await)
     } else {
         info!("Using local ingestor");
-        Arc::new(LocalService::init())
+        Arc::new(service::get_local_service())
     };
     info!("Starting server on {}:{}", config.host, config.port);
     let app = Router::new().route("/health", get(health)).route(
