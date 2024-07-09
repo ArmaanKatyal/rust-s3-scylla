@@ -154,4 +154,27 @@ mod tests {
             "test_event"
         );
     }
+
+    #[tokio::test]
+    async fn test_s3_read_file_json_error() {
+        let bucket = "test-bucket";
+        let key = "test-key";
+
+        let logs: Vec<u8> = serde_json::to_vec(r#"{"event":"test_event"}"#).unwrap();
+
+        let mut mock_s3_client = MockS3ClientTraitImpl::new();
+        mock_s3_client.expect_get_object().withf(move |b, k| b == bucket && k == key)
+        .returning(move |_,_| {
+            let byte_stream = ByteStream::from(logs.clone());
+            let output = GetObjectOutput::builder().body(byte_stream).build();
+            Ok(output)
+        });
+
+        let service = S3Service {
+            client: mock_s3_client
+        };
+        let result = service.read_file(bucket, key).await;
+        assert!(result.is_err());
+        assert!(result.expect_err("json parsing didn't fail").to_string().contains("Failed to parse logs"))
+    }
 }
